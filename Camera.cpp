@@ -1,6 +1,6 @@
 #include "Camera.h"
 
-Camera::Camera() : transformation{}, viewMatrix{}, perspectiveProjectionMatrix{}, orthographicProjectionMatrix{} {
+Camera::Camera() : transformation(), viewMatrix{}, perspectiveProjectionMatrix{}, orthographicProjectionMatrix{} {
     initialized = false;
     released = false;
 }
@@ -27,12 +27,14 @@ void Camera::setReleased() {
     released = true;
 }
 
-Transformation Camera::getTransformation() {
+std::unique_ptr<Transformation>& Camera::getTransformation() {
     return transformation;
 }
 
 void Camera::setTransformation(Transformation transformation) {
-    this->transformation = transformation;
+    this->transformation->position = transformation.position;
+    this->transformation->rotation = transformation.rotation;
+    this->transformation->scaling = transformation.scaling;
 }
 
 DirectX::XMMATRIX Camera::getViewMatrix() {
@@ -47,12 +49,12 @@ DirectX::XMMATRIX Camera::getOrthographicProjectionMatrix() {
     return DirectX::XMLoadFloat4x4(&orthographicProjectionMatrix);
 }
 
-bool Camera::initialize(float fieldOfView, float screenWidth, float screenHeight, float screenNear, float screenFar, Transformation transformation) {
+bool Camera::initialize(float fieldOfView, float screenWidth, float screenHeight, float screenNear, float screenFar) {
     if (isInitialized()) {
         release();
     }
 
-    this->transformation = transformation;
+    transformation = std::make_unique<Transformation>();
 
     update();
 
@@ -69,13 +71,10 @@ bool Camera::initialize(float fieldOfView, float screenWidth, float screenHeight
 }
 
 void Camera::update() {
-    this->transformation.scaling = DirectX::XMFLOAT3(1.0f, 1.0f, 1.0f);
-    DirectX::XMMATRIX transformationMatrix = transformation.getTransformationMatrix();
+    DirectX::XMVECTOR position = transformation->getPosition();
 
-    DirectX::XMVECTOR position = transformation.getPosition();
-
-    DirectX::XMVECTOR forward = transformation.getForward();
-    DirectX::XMVECTOR up = transformation.getUp();
+    DirectX::XMVECTOR forward = transformation->getForward();
+    DirectX::XMVECTOR up = transformation->getUp();
 
     DirectX::XMVECTOR focusPosition = DirectX::XMVectorAdd(position, forward);
 
@@ -87,6 +86,12 @@ void Camera::release() {
     if (isReleased()) {
         return;
     }
+
+    orthographicProjectionMatrix = {};
+    perspectiveProjectionMatrix = {};
+    viewMatrix = {};
+
+    transformation.reset();
 
     setReleased();
 }

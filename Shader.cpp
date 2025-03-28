@@ -1,6 +1,6 @@
 #include "Shader.h"
 
-Shader::Shader() : vertexShader(), pixelShader(), inputLayout(), matrixesBuffer() {
+Shader::Shader() : vertexShader(), pixelShader(), inputLayout(), vsConstantBuffers(), psConstantBuffers(), psSamplers() {
     initialized = false;
     released = false;
 }
@@ -27,87 +27,41 @@ void Shader::setReleased() {
     released = true;
 }
 
-bool Shader::setShaderParameters(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, DirectX::XMMATRIX modelMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix) {
-    modelMatrix = DirectX::XMMatrixTranspose(modelMatrix);
-    viewMatrix = DirectX::XMMatrixTranspose(viewMatrix);
-    projectionMatrix = DirectX::XMMatrixTranspose(projectionMatrix);
-
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
-    HRESULT result = deviceContext->Map(matrixesBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-    if (FAILED(result)) {
-        return false;
-    }
-
-    MatrixesBuffer* data = (MatrixesBuffer*)mappedResource.pData;
-    data->modelMatrix = modelMatrix;
-    data->viewMatrix = viewMatrix;
-    data->projectionMatrix = projectionMatrix;
-
-    deviceContext->Unmap(matrixesBuffer.Get(), 0);
-    deviceContext->VSSetConstantBuffers(0, 1, matrixesBuffer.GetAddressOf());
-
-    return true;
+void Shader::setPsSampler(UINT slot, std::shared_ptr<Sampler> sampler) {
+    psSamplers[slot] = sampler;
 }
 
-bool Shader::initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle) {
+void Shader::setPsShaderResource(UINT slot, std::shared_ptr<ShaderResource> shaderResource) {
+    psShaderResources[slot] = shaderResource;
+}
+
+bool Shader::initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle, std::wstring filename, const D3D11_INPUT_ELEMENT_DESC* inputElementsDesc, UINT inputElementsDescsQuantity) {
     if (isInitialized()) {
         release();
     }
 
-    wchar_t filename[] = L"shader.hlsl";
-    bool result = initializeShader(filename, device, windowHandle);
-    if (!result) {
-        return false;
-    }
-
-    setInitialized();
-    return true;
-}
-
-bool Shader::render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, DirectX::XMMATRIX modelMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix) {
-    bool result = setShaderParameters(deviceContext, modelMatrix, viewMatrix, projectionMatrix);
-    if (!result) {
-        return false;
-    }
-
-    renderShader(deviceContext);
-
-    return true;
-}
-
-void Shader::release() {
-    if (isReleased()) {
-        return;
-    }
-
-    releaseShader();
-
-    setReleased();
-}
-
-bool Shader::initializeShader(WCHAR* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle) {
     Microsoft::WRL::ComPtr<ID3D10Blob> errorMessage;
     Microsoft::WRL::ComPtr<ID3D10Blob> vertexShaderBuffer;
-    HRESULT result = D3DCompileFromFile(filename, NULL, NULL, "VertexMain", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, vertexShaderBuffer.GetAddressOf(), errorMessage.GetAddressOf());
+    HRESULT result = D3DCompileFromFile(filename.c_str(), NULL, NULL, "VertexMain", "vs_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, vertexShaderBuffer.GetAddressOf(), errorMessage.GetAddressOf());
     if (FAILED(result)) {
         if (errorMessage) {
             outputShaderErrorMessage(errorMessage, windowHandle, filename);
         }
         else {
-            MessageBox(windowHandle, filename, L"Missing Shader File", MB_OK);
+            MessageBox(windowHandle, filename.c_str(), L"Missing Shader File", MB_OK);
         }
 
         return false;
     }
 
     Microsoft::WRL::ComPtr<ID3D10Blob> pixelShaderBuffer;
-    result = D3DCompileFromFile(filename, NULL, NULL, "PixelMain", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, pixelShaderBuffer.GetAddressOf(), errorMessage.GetAddressOf());
+    result = D3DCompileFromFile(filename.c_str(), NULL, NULL, "PixelMain", "ps_5_0", D3DCOMPILE_ENABLE_STRICTNESS, 0, pixelShaderBuffer.GetAddressOf(), errorMessage.GetAddressOf());
     if (FAILED(result)) {
         if (errorMessage) {
             outputShaderErrorMessage(errorMessage, windowHandle, filename);
         }
         else {
-            MessageBox(windowHandle, filename, L"Missing Shader File", MB_OK);
+            MessageBox(windowHandle, filename.c_str(), L"Missing Shader File", MB_OK);
         }
 
         return false;
@@ -123,28 +77,8 @@ bool Shader::initializeShader(WCHAR* filename, Microsoft::WRL::ComPtr<ID3D11Devi
         return false;
     }
 
-    const unsigned int elementsQuantity = 1;
-    D3D11_INPUT_ELEMENT_DESC elements[elementsQuantity]{};
-
-    D3D11_INPUT_ELEMENT_DESC& position = elements[0];
-    position.SemanticName = "POSITION";
-    position.SemanticIndex = 0;
-    position.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-    position.InputSlot = 0;
-    position.AlignedByteOffset = 0;
-    position.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    position.InstanceDataStepRate = 0;
-
-    /*D3D11_INPUT_ELEMENT_DESC& color = elementsLayout[1];
-    color.SemanticName = "COLOR";
-    color.SemanticIndex = 0;
-    color.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-    color.InputSlot = 0;
-    color.AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-    color.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-    color.InstanceDataStepRate = 0;*/
-
-    result = device->CreateInputLayout(elements, elementsQuantity, vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), inputLayout.GetAddressOf());
+    inputLayout = std::make_unique<InputLayout>();
+    result = inputLayout->initialize(device, inputElementsDesc, inputElementsDescsQuantity, vertexShaderBuffer);
     if (FAILED(result)) {
         return false;
     }
@@ -152,42 +86,68 @@ bool Shader::initializeShader(WCHAR* filename, Microsoft::WRL::ComPtr<ID3D11Devi
     vertexShaderBuffer.Reset();
     pixelShaderBuffer.Reset();
 
-    D3D11_BUFFER_DESC matrixesBufferDesc = {};
-    matrixesBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-    matrixesBufferDesc.ByteWidth = sizeof(MatrixesBuffer);
-    matrixesBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    matrixesBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-    matrixesBufferDesc.MiscFlags = 0;
-    matrixesBufferDesc.StructureByteStride = 0;
-
-    result = device->CreateBuffer(&matrixesBufferDesc, NULL, matrixesBuffer.GetAddressOf());
-    if (FAILED(result)) {
-        return false;
-    }
-
+    setInitialized();
     return true;
 }
 
-void Shader::renderShader(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext) {
-    deviceContext->IASetInputLayout(inputLayout.Get());
+void Shader::set(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext) {
+    inputLayout->set(deviceContext);
 
+    for (auto& pair : vsConstantBuffers) {
+        pair.second->setVs(deviceContext, pair.first);
+    }
     deviceContext->VSSetShader(vertexShader.Get(), NULL, 0);
+
+    for (auto& pair : psConstantBuffers) {
+        pair.second->setPs(deviceContext, pair.first);
+    }
+    for (auto& pair : psSamplers) {
+        pair.second->setPs(deviceContext, pair.first);
+    }
+    for (auto& pair : psShaderResources) {
+        pair.second->setPs(deviceContext, pair.first);
+    }
     deviceContext->PSSetShader(pixelShader.Get(), NULL, 0);
 }
 
-void Shader::releaseShader() {
-    matrixesBuffer.Reset();
-    inputLayout.Reset();
+void Shader::release() {
+    if (isReleased()) {
+        return;
+    }
+
+    for (auto& pair : psShaderResources) {
+        pair.second.reset();
+    }
+    psShaderResources.clear();
+
+    for (auto& pair : psSamplers) {
+        pair.second.reset();
+    }
+    psSamplers.clear();
+
+    for (auto& pair : psConstantBuffers) {
+        pair.second.reset();
+    }
+    psConstantBuffers.clear();
+
+    for (auto& pair : vsConstantBuffers) {
+        pair.second.reset();
+    }
+    vsConstantBuffers.clear();
+
+    inputLayout.reset();
 
     pixelShader.Reset();
     vertexShader.Reset();
+
+    setReleased();
 }
 
-void Shader::outputShaderErrorMessage(Microsoft::WRL::ComPtr<ID3D10Blob> errorMessage, HWND windowHandle, WCHAR* shaderFilename) {
+void Shader::outputShaderErrorMessage(Microsoft::WRL::ComPtr<ID3D10Blob> errorMessage, HWND windowHandle, std::wstring shaderFilename) {
     char* compileErrors = (char*)(errorMessage->GetBufferPointer());
     unsigned long long bufferSize = errorMessage->GetBufferSize();
 
-    std::ofstream file;
+    std::wofstream file;
     file.open("shader-error.txt");
     if (file.is_open()) {
         for (unsigned long long i = 0; i < bufferSize; i++) {
@@ -198,5 +158,5 @@ void Shader::outputShaderErrorMessage(Microsoft::WRL::ComPtr<ID3D10Blob> errorMe
 
     errorMessage.Reset();
 
-    MessageBox(windowHandle, L"Compiling Shader Error. Check shader-error.txt for more information", shaderFilename, MB_OK);
+    MessageBox(windowHandle, L"Compiling Shader Error. Check shader-error.txt for more information", shaderFilename.c_str(), MB_OK);
 }

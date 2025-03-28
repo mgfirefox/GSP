@@ -1,27 +1,24 @@
 #include "Model.h"
 
-Model::Model() : vertexBuffer(), indexBuffer(), vertexes(), indexes(), transformation{} {
+const std::function<void(Model*)> Model::deleter = [](Model* model) {
+    model->release();
+    delete model;
+    };
+
+Model::Model() : transformation(), vertexBuffer(), meshes() {
     initialized = false;
     released = false;
-
-    vertexesQuantity = 0;
-    indexesQuantity = 0;
 }
 
 Model::Model(const Model& model) {
     initialized = model.initialized;
     released = model.released;
 
+    transformation = std::make_unique<Transformation>(*model.transformation);
+    
     vertexBuffer = model.vertexBuffer;
-    indexBuffer = model.indexBuffer;
 
-    vertexes = model.vertexes;
-    indexes = model.indexes;
-
-    vertexesQuantity = model.vertexesQuantity;
-    indexesQuantity = model.indexesQuantity;
-
-    transformation = model.transformation;
+    meshes = model.meshes;
 }
 
 Model::~Model() {
@@ -46,41 +43,101 @@ void Model::setReleased() {
     released = true;
 }
 
-Transformation Model::getTransformation() {
+std::unique_ptr<Transformation>& Model::getTransformation() {
     return transformation;
 }
 
 void Model::setTransformation(Transformation transformation) {
-    this->transformation = transformation;
+    this->transformation->position = transformation.position;
+    this->transformation->rotation = transformation.rotation;
+    this->transformation->scaling = transformation.scaling;
 }
 
-bool Model::initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, std::string filename, Transformation transformation) {
+bool Model::initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::string filename, Transformation transformation) {
     if (isInitialized()) {
         release();
     }
 
-    bool result = loadModel(filename);
+    ModelData modelData = {};
+
+    ModelFileParser modelFileParser;
+    bool result = modelFileParser.parseFile(filename, modelData);
     if (!result) {
         return false;
     }
 
-    vertexesQuantity = (unsigned long)vertexes.size();
-    indexesQuantity = (unsigned long)indexes.size();
-
-    result = initializeBuffers(device);
+    result = initialize(device, deviceContext, modelData, transformation);
     if (!result) {
         return false;
     }
-
-    indexes.clear();
-    vertexes.clear();
 
     setInitialized();
     return true;
 }
 
-void Model::render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext) {
-    renderBuffers(deviceContext);
+bool Model::initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, ModelData modelData, Transformation transformation) {
+    if (isInitialized()) {
+        release();
+    }
+
+    vertexBuffer = std::shared_ptr<VertexBuffer<Vertex>>(new VertexBuffer<Vertex>, VertexBuffer<Vertex>::deleter);
+    bool result = vertexBuffer->initialize(device, modelData.vertexes.data(), (UINT)modelData.vertexes.size());
+    if (!result) {
+        return false;
+    }
+
+    std::unordered_map<std::string, std::unique_ptr<Material>> uniqueMaterials;
+    for (const auto& pair : modelData.materialsDataItems) {
+        std::unique_ptr<Material>& material = uniqueMaterials[pair.first];
+        material = std::make_unique<Material>();
+        result = material->initialize(device, deviceContext, pair.second);
+        if (!result) {
+            return false;
+        }
+    }
+
+    for (const auto& meshData : modelData.meshDataItems) {
+        std::unique_ptr<Material>& uniqueMaterial = uniqueMaterials[meshData.materialName];
+        if (!uniqueMaterial) {
+            continue;
+        }
+
+        std::shared_ptr<Material> material(new Material(*uniqueMaterial), Material::deleter);
+
+        std::shared_ptr<IndexBuffer> indexBuffer(new IndexBuffer, IndexBuffer::deleter);
+        result = indexBuffer->initialize(device, meshData.indexes.data(), (UINT)meshData.indexes.size());
+        if (!result) {
+            return false;
+        }
+
+        std::shared_ptr<Mesh> mesh(new Mesh, Mesh::deleter);
+        mesh->initialize(indexBuffer, material);
+        meshes.push_back(mesh);
+    }
+
+    this->transformation = std::make_unique<Transformation>(transformation);
+
+    for (auto& pair : uniqueMaterials) {
+        pair.second->release();
+        pair.second.reset();
+    }
+    uniqueMaterials.clear();
+
+    setInitialized();
+    return true;
+}
+
+bool Model::render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::unique_ptr<Shader>& shader) {
+    vertexBuffer->set(deviceContext);
+
+    for (auto& mesh : meshes) {
+        bool result = mesh->render(deviceContext, shader);
+        if (!result) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void Model::release() {
@@ -88,79 +145,14 @@ void Model::release() {
         return;
     }
 
-    releaseBuffers();
-    releaseModel();
+    for (auto& mesh : meshes) {
+        mesh.reset();
+    }
+    meshes.clear();
+
+    vertexBuffer.reset();
+
+    transformation.reset();
 
     setReleased();
-}
-
-bool Model::loadModel(std::string filename) {
-    if (vertexesQuantity != 0 || indexesQuantity != 0) {
-        releaseModel();
-    }
-
-    return ml::loadObj(filename, vertexes, indexes);
-}
-
-void Model::releaseModel() {
-    vertexesQuantity = 0;
-    indexesQuantity = 0;
-}
-
-bool Model::initializeBuffers(Microsoft::WRL::ComPtr<ID3D11Device> device) {
-    D3D11_BUFFER_DESC vertexBufferDesc = {};
-    vertexBufferDesc.ByteWidth = (unsigned int)(sizeof(vertexes[0]) * vertexesQuantity);
-    vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    vertexBufferDesc.CPUAccessFlags = 0;
-    vertexBufferDesc.MiscFlags = 0;
-    vertexBufferDesc.StructureByteStride = 0;
-
-    D3D11_SUBRESOURCE_DATA vertexBufferData = {};
-    vertexBufferData.pSysMem = vertexes.data();
-    vertexBufferData.SysMemPitch = 0;
-    vertexBufferData.SysMemSlicePitch = 0;
-
-    HRESULT result = device->CreateBuffer(&vertexBufferDesc, &vertexBufferData, vertexBuffer.GetAddressOf());
-    
-    if (FAILED(result)) {
-        return false;
-    }
-
-    D3D11_BUFFER_DESC indexBufferDesc = {};
-    indexBufferDesc.ByteWidth = (unsigned int)(sizeof(indexes[0]) * indexesQuantity);
-    indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    indexBufferDesc.CPUAccessFlags = 0;
-    indexBufferDesc.MiscFlags = 0;
-    indexBufferDesc.StructureByteStride = 0;
-
-    D3D11_SUBRESOURCE_DATA indexBufferData = {};
-    indexBufferData.pSysMem = (void*)indexes.data();
-    indexBufferData.SysMemPitch = 0;
-    indexBufferData.SysMemSlicePitch = 0;
-
-    result = device->CreateBuffer(&indexBufferDesc, &indexBufferData, indexBuffer.GetAddressOf());
-    
-    if (FAILED(result)) {
-        return false;
-    }
-
-    return true;
-}
-
-void Model::renderBuffers(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext) {
-    unsigned int stride = sizeof(ml::Vertex);
-    unsigned int offset = 0;
-
-    deviceContext->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-    deviceContext->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-    deviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    deviceContext->DrawIndexed((unsigned int)indexesQuantity, 0, 0);
-}
-
-void Model::releaseBuffers() {
-    indexBuffer.Reset();
-    vertexBuffer.Reset();
 }

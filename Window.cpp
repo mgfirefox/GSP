@@ -66,7 +66,7 @@ void Window::initialize(ATOM classAtom, LPCWCHAR applicationName, HINSTANCE appl
         this->height = fullscreenHeight;
 
         DEVMODE screenSettings = {};
-        screenSettings.dmSize = sizeof(screenSettings);
+        screenSettings.dmSize = sizeof(DEVMODE);
         screenSettings.dmBitsPerPel = 32;
         screenSettings.dmPelsWidth = (unsigned long)this->width;
         screenSettings.dmPelsHeight = (unsigned long)this->height;

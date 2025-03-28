@@ -1,6 +1,6 @@
 #include "model_loader.h"
 
-bool ml::loadObj(std::string filename, std::vector<Vertex>& vertexes, std::vector<unsigned long>& indexes) {
+bool ml::loadObj(std::string filename, std::vector<Vertex>& vertexes, std::vector<unsigned int>& indexes) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         return false;
@@ -10,7 +10,7 @@ bool ml::loadObj(std::string filename, std::vector<Vertex>& vertexes, std::vecto
     std::vector<DirectX::XMFLOAT3> textureCoordinatesItems;
     std::vector<DirectX::XMFLOAT3> normalsItems;
 
-    std::unordered_map<Vertex, unsigned long> uniqueVertexes;
+    std::unordered_map<Vertex, unsigned int> uniqueVertexes;
 
     std::string line;
     while (std::getline(file, line)) {
@@ -59,7 +59,7 @@ bool ml::loadObj(std::string filename, std::vector<Vertex>& vertexes, std::vecto
                 vertex.normals = normalsItems[std::stoul(normalsIndex) - 1];
 
                 if (uniqueVertexes.count(vertex) == 0) {
-                    uniqueVertexes[vertex] = (unsigned long)vertexes.size();
+                    uniqueVertexes[vertex] = (unsigned int)vertexes.size();
                     vertexes.push_back(vertex);
                 }
                 indexes.push_back(uniqueVertexes[vertex]);

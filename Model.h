@@ -1,31 +1,40 @@
 #pragma once
 #include <d3d11.h>
-#include <DirectXMath.h>
 
 #include <wrl/client.h>
+#include <memory>
 
-#include <fstream>
+#include <functional>
+
 #include <string>
+#include <fstream>
+#include <sstream>
 
-#include "model_loader.h"
+#include <vector>
+#include <unordered_map>
+
+#include "VertexBuffer.h"
+
+#include "Mesh.h"
+#include "Material.h"
+
+#include "FileParsers.h"
+
 #include "transformation.h"
 
 class Model {
     bool initialized;
     bool released;
 
-    Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
+    std::unique_ptr<Transformation> transformation;
 
-    std::vector<ml::Vertex> vertexes;
-    std::vector<unsigned long> indexes;
+    std::shared_ptr<VertexBuffer<Vertex>> vertexBuffer;
 
-    unsigned long vertexesQuantity;
-    unsigned long indexesQuantity;
-
-    Transformation transformation;
+    std::vector<std::shared_ptr<Mesh>> meshes;
 
 public:
+    static const std::function<void(Model*)> deleter;
+
     Model();
     Model(const Model& model);
     ~Model();
@@ -38,18 +47,11 @@ private:
     void setReleased();
 
 public:
-    Transformation getTransformation();
+    std::unique_ptr<Transformation>& getTransformation();
     void setTransformation(Transformation transformation);
 
-    bool initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, std::string filename, Transformation transformation = {});
-    void render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
+    bool initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::string filename, Transformation transformation = {});
+    bool initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, ModelData modelData, Transformation transformation = {});
+    bool render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, std::unique_ptr<Shader>& shader);
     void release();
-
-private:
-    bool loadModel(std::string filename);
-    void releaseModel();
-
-    bool initializeBuffers(Microsoft::WRL::ComPtr<ID3D11Device> device);
-    void renderBuffers(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
-    void releaseBuffers();
 };

@@ -4,14 +4,18 @@
 #include <memory>
 
 #include "Window.h"
-#include "Input.h"
 #include "Renderer.h"
+#include "Input.h"
+#include "Timer.h"
+#include "FpsCounter.h"
 
 const std::string CLOSE_APPLICATION_ACTION_NAME = "closeApplication";
 
 class Application {
     bool initialized;
     bool released;
+
+    static std::unique_ptr<Application> application;
 
     LPCWSTR name;
     HINSTANCE instanceHandle;
@@ -20,8 +24,6 @@ class Application {
 
     std::unique_ptr<Window> window;
     std::unique_ptr<Renderer> renderer;
-
-    static std::unique_ptr<Application> application;
 
     bool shouldShutdown;
 
@@ -45,6 +47,5 @@ public:
 
 private:
     static LRESULT CALLBACK windowProcedure(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam);
-    LRESULT CALLBACK onWindowMessages(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam);
-    bool renderFrame();
+    LRESULT CALLBACK onAllWindowMessages(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam);
 };

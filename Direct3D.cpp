@@ -140,43 +140,43 @@ bool Direct3D::initialize(int screenWidth, int screenHeight, HWND windowHandle, 
     }
     backBuffer.Reset();
 
-    D3D11_TEXTURE2D_DESC depthBufferDesc = {};
-    depthBufferDesc.Width = screenWidth;
-    depthBufferDesc.Height = screenHeight;
-    depthBufferDesc.MipLevels = 1;
-    depthBufferDesc.ArraySize = 1;
-    depthBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-    depthBufferDesc.SampleDesc = swapChainDesc.SampleDesc;
-    depthBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-    depthBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-    depthBufferDesc.CPUAccessFlags = 0;
-    depthBufferDesc.MiscFlags = 0;
+    D3D11_TEXTURE2D_DESC depthStencilBufferDesc = {};
+    depthStencilBufferDesc.Width = screenWidth;
+    depthStencilBufferDesc.Height = screenHeight;
+    depthStencilBufferDesc.MipLevels = 1;
+    depthStencilBufferDesc.ArraySize = 1;
+    depthStencilBufferDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+    depthStencilBufferDesc.SampleDesc = swapChainDesc.SampleDesc;
+    depthStencilBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+    depthStencilBufferDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+    depthStencilBufferDesc.CPUAccessFlags = 0;
+    depthStencilBufferDesc.MiscFlags = 0;
 
-    result = device->CreateTexture2D(&depthBufferDesc, NULL, depthStencilBuffer.GetAddressOf());
+    result = device->CreateTexture2D(&depthStencilBufferDesc, NULL, depthStencilBuffer.GetAddressOf());
     if (FAILED(result)) {
         return false;
     }
 
-    D3D11_DEPTH_STENCIL_DESC depthStencilDesc = {};
-    depthStencilDesc.DepthEnable = true;
-    depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-    depthStencilDesc.DepthFunc = D3D11_COMPARISON_LESS;
-    depthStencilDesc.StencilEnable = true;
-    depthStencilDesc.StencilReadMask = 0xFF;
-    depthStencilDesc.StencilWriteMask = 0xFF;
+    D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc = {};
+    depthStencilStateDesc.DepthEnable = true;
+    depthStencilStateDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
+    depthStencilStateDesc.DepthFunc = D3D11_COMPARISON_LESS;
+    depthStencilStateDesc.StencilEnable = true;
+    depthStencilStateDesc.StencilReadMask = 0xFF;
+    depthStencilStateDesc.StencilWriteMask = 0xFF;
 
-    D3D11_DEPTH_STENCILOP_DESC& frontFace = depthStencilDesc.FrontFace;
+    D3D11_DEPTH_STENCILOP_DESC& frontFace = depthStencilStateDesc.FrontFace;
     frontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
     frontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
     frontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
     frontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
 
-    D3D11_DEPTH_STENCILOP_DESC& backFace = depthStencilDesc.BackFace;
+    D3D11_DEPTH_STENCILOP_DESC& backFace = depthStencilStateDesc.BackFace;
     backFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
     backFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
     backFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
     backFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
-    result = device->CreateDepthStencilState(&depthStencilDesc, depthStencilState.GetAddressOf());
+    result = device->CreateDepthStencilState(&depthStencilStateDesc, depthStencilState.GetAddressOf());
     if (FAILED(result)) {
         return false;
     }
@@ -193,18 +193,18 @@ bool Direct3D::initialize(int screenWidth, int screenHeight, HWND windowHandle, 
     }
     deviceContext->OMSetRenderTargets(1, renderTargetView.GetAddressOf(), depthStencilView.Get());
 
-    D3D11_RASTERIZER_DESC rasterizerDesc = {};
-    rasterizerDesc.FillMode = D3D11_FILL_SOLID;
-    rasterizerDesc.CullMode = D3D11_CULL_BACK;
-    rasterizerDesc.FrontCounterClockwise = false;
-    rasterizerDesc.DepthBias = 0;
-    rasterizerDesc.DepthBiasClamp = 0.0f;
-    rasterizerDesc.SlopeScaledDepthBias = 0.0f;
-    rasterizerDesc.DepthClipEnable = true;
-    rasterizerDesc.ScissorEnable = false;
-    rasterizerDesc.MultisampleEnable = false;
-    rasterizerDesc.AntialiasedLineEnable = false;
-    result = device->CreateRasterizerState(&rasterizerDesc, rasterizerState.GetAddressOf());
+    D3D11_RASTERIZER_DESC rasterizerStateDesc = {};
+    rasterizerStateDesc.FillMode = D3D11_FILL_SOLID;
+    rasterizerStateDesc.CullMode = D3D11_CULL_BACK;
+    rasterizerStateDesc.FrontCounterClockwise = false;
+    rasterizerStateDesc.DepthBias = 0;
+    rasterizerStateDesc.DepthBiasClamp = 0.0f;
+    rasterizerStateDesc.SlopeScaledDepthBias = 0.0f;
+    rasterizerStateDesc.DepthClipEnable = true;
+    rasterizerStateDesc.ScissorEnable = false;
+    rasterizerStateDesc.MultisampleEnable = false;
+    rasterizerStateDesc.AntialiasedLineEnable = false;
+    result = device->CreateRasterizerState(&rasterizerStateDesc, rasterizerState.GetAddressOf());
     if (FAILED(result)) {
         return false;
     }

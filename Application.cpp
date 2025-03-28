@@ -66,12 +66,18 @@ bool Application::initialize(LPCWCHAR name, HINSTANCE instanceHandle, int showCm
     windowClass.lpszMenuName = NULL;
     windowClass.lpszClassName = this->name;
     classAtom = RegisterClassEx(&windowClass);
-    if (!classAtom) {
+    if (classAtom == 0) {
         return false;
     }
 
     window = std::make_unique<Window>();
     window->initialize(classAtom, this->name, this->instanceHandle, showCmd, FULLSCREEN_ENABLED);
+
+    renderer = std::make_unique<Renderer>();
+    bool result = renderer->initialize(window->getWidth(), window->getHeight(), window->getHandle());
+    if (!result) {
+        return false;
+    }
 
     std::unique_ptr<Input>& input = Input::getInput();
     input->initialize();
@@ -82,13 +88,7 @@ bool Application::initialize(LPCWCHAR name, HINSTANCE instanceHandle, int showCm
         }
         };
     int keyCodes[] = { VK_ESCAPE };
-    input->bindAction(CLOSE_APPLICATION_ACTION_NAME, closeApplicationFunction, keyCodes, 1);
-
-    renderer = std::make_unique<Renderer>();
-    bool result = renderer->initialize(window->getWidth(), window->getHeight(), window->getHandle());
-    if (!result) {
-        return false;
-    }
+    input->bindAction(CLOSE_APPLICATION_ACTION_NAME, closeApplicationFunction, keyCodes, 1, NULL, 0);
 
     setInitialized();
     return true;
@@ -96,6 +96,14 @@ bool Application::initialize(LPCWCHAR name, HINSTANCE instanceHandle, int showCm
 
 void Application::run() {
     MSG windowMessage = {};
+
+    std::unique_ptr<Timer>& timer = Timer::getTimer();
+    timer->initialize();
+
+    std::unique_ptr<Input>& input = Input::getInput();
+
+    std::unique_ptr<FpsCounter>& fpsCounter = FpsCounter::getFpsCounter();
+    fpsCounter->initialize();
 
     while (!shouldShutdown) {
         if (PeekMessage(&windowMessage, NULL, 0, 0, PM_REMOVE)) {
@@ -105,12 +113,28 @@ void Application::run() {
         if (windowMessage.message == WM_QUIT) {
             break;
         }
-        if (shouldShutdown) {
+
+        timer->update();
+
+        input->onInputEvents();
+
+        renderer->updateCamera();
+        bool result = renderer->renderFrame();
+        if (!result) {
             break;
         }
-        else {
-            shouldShutdown = !renderer->renderFrame();
-        }
+
+        wchar_t c[32];
+        swprintf_s(c, 32, L"%d", fpsCounter->getFps());
+        c[31] = '\0';
+        OutputDebugString(L"\n\nFPS: ");
+        OutputDebugString(c);
+
+        fpsCounter->update();
+
+        /*if (!VSYNC_ENABLED && FPS_LIMIT != 0) {
+            fpsCounter->limit(FPS_LIMIT);
+        }*/
     }
 }
 
@@ -119,13 +143,21 @@ void Application::release() {
         return;
     }
 
-    renderer->release();
-    renderer.reset();
+    std::unique_ptr<FpsCounter>& fpsCounter = FpsCounter::getFpsCounter();
+    fpsCounter->release();
+    fpsCounter.reset();
+
+    std::unique_ptr<Timer>& timer = Timer::getTimer();
+    timer->release();
+    timer.reset();
 
     std::unique_ptr<Input>& input = Input::getInput();
     input->unbindAction(CLOSE_APPLICATION_ACTION_NAME);
     input->release();
     input.reset();
+
+    renderer->release();
+    renderer.reset();    
 
     window->release();
     window.reset();
@@ -142,12 +174,10 @@ void Application::release() {
 }
 
 LRESULT Application::windowProcedure(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam) {
-    return application->onWindowMessages(windowHandle, message, wparam, lparam);
+    return application->onAllWindowMessages(windowHandle, message, wparam, lparam);
 }
 
-LRESULT Application::onWindowMessages(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam) {
-    std::unique_ptr<Input>& input = Input::getInput();
-
+LRESULT Application::onAllWindowMessages(HWND windowHandle, UINT message, WPARAM wparam, LPARAM lparam) {
     switch (message) {
     // Window Notifications
     case WM_CLOSE:
@@ -156,10 +186,14 @@ LRESULT Application::onWindowMessages(HWND windowHandle, UINT message, WPARAM wp
         break;
 
     // Keyboard Input Notifications
-    case WM_KEYDOWN:
+    case WM_KEYDOWN: {
+        WORD keyFlags = HIWORD(lparam);
+        if (keyFlags & KF_REPEAT) {
+            break;
+        }
+    }
     case WM_KEYUP:
-        input->onKeyboardInputNotifications(message, wparam, lparam);
-        break;
+
 
     // Mouse Input Notifications
     case WM_LBUTTONDOWN:
@@ -169,9 +203,16 @@ LRESULT Application::onWindowMessages(HWND windowHandle, UINT message, WPARAM wp
     case WM_MOUSEMOVE:
     case WM_MOUSEWHEEL:
     case WM_RBUTTONDOWN:
-    case WM_RBUTTONUP:
-        input->onMouseInputNotifications(message, wparam, lparam);
+    case WM_RBUTTONUP: {
+        InputEvent inputEvent = {};
+        inputEvent.message = message;
+        inputEvent.wparam = wparam;
+        inputEvent.lparam = lparam;
+
+        std::unique_ptr<Input>& input = Input::getInput();
+        input->addInputEvent(inputEvent);
         break;
+    }
 
     // Raw Input Notifications
     /*case WM_INPUT:

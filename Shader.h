@@ -4,15 +4,17 @@
 #include <DirectXMath.h>
 
 #include <wrl/client.h>
+#include <memory>
+
+#include <unordered_map>
 
 #include <wchar.h>
 #include <fstream>
 
-struct MatrixesBuffer {
-    DirectX::XMMATRIX modelMatrix;
-    DirectX::XMMATRIX viewMatrix;
-    DirectX::XMMATRIX projectionMatrix;
-};
+#include "InputLayout.h"
+#include "ConstantBuffer.h"
+#include "Sampler.h"
+#include "ShaderResource.h"
 
 class Shader {
     bool initialized;
@@ -21,8 +23,14 @@ class Shader {
     Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
     Microsoft::WRL::ComPtr<ID3D11PixelShader> pixelShader;
 
-    Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> matrixesBuffer;
+    std::unique_ptr<InputLayout> inputLayout;
+    
+    std::unordered_map<UINT, std::shared_ptr<BaseConstantBuffer>> vsConstantBuffers;
+    std::unordered_map<UINT, std::shared_ptr<BaseConstantBuffer>> psConstantBuffers;
+
+    std::unordered_map<UINT, std::shared_ptr<Sampler>> psSamplers;
+
+    std::unordered_map<UINT, std::shared_ptr<ShaderResource>> psShaderResources;
 
 public:
     Shader();
@@ -35,17 +43,67 @@ private:
     bool isReleased();
     void setReleased();
 
-    bool setShaderParameters(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, DirectX::XMMATRIX modelMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
-
 public:
-    bool initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle);
-    bool render(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, DirectX::XMMATRIX modelMatrix, DirectX::XMMATRIX viewMatrix, DirectX::XMMATRIX projectionMatrix);
+    template <class T>
+    void setVsConstantBuffer(UINT slot, std::shared_ptr<ConstantBuffer<T>> constantBuffer);
+    template <class T>
+    void setPsConstantBuffer(UINT slot, std::shared_ptr<ConstantBuffer<T>> constantBuffer);
+
+    void setPsSampler(UINT slot, std::shared_ptr<Sampler> sampler);
+
+    void setPsShaderResource(UINT slot, std::shared_ptr<ShaderResource> shaderResource);
+
+    template <class T>
+    bool setVsConstantBufferData(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, UINT slot, T data);
+    template <class T>
+    bool setPsConstantBufferData(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, UINT slot, T data);
+
+    bool initialize(Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle, std::wstring filename, const D3D11_INPUT_ELEMENT_DESC* inputElementsDesc, UINT inputElementsQuantity);
+    void set(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
     void release();
 
 private:
-    bool initializeShader(WCHAR* filename, Microsoft::WRL::ComPtr<ID3D11Device> device, HWND windowHandle);
-    void renderShader(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext);
-    void releaseShader();
-
-    void outputShaderErrorMessage(Microsoft::WRL::ComPtr<ID3D10Blob> errorMessage, HWND windowHandle, WCHAR* shaderFilename);
+    void outputShaderErrorMessage(Microsoft::WRL::ComPtr<ID3D10Blob> errorMessage, HWND windowHandle, std::wstring shaderFilename);
 };
+
+template<class T>
+inline void Shader::setVsConstantBuffer(UINT slot, std::shared_ptr<ConstantBuffer<T>> constantBuffer) {
+    /*if (vsConstantBuffers.size() == D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT) {
+        return -1;
+    }*/
+
+    vsConstantBuffers[slot] = constantBuffer;
+}
+
+template<class T>
+inline void Shader::setPsConstantBuffer(UINT slot, std::shared_ptr<ConstantBuffer<T>> constantBuffer) {
+    psConstantBuffers[slot] = constantBuffer;
+}
+
+template<class T>
+inline bool Shader::setVsConstantBufferData(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, UINT slot, T data) {
+    if (vsConstantBuffers.find(slot) == vsConstantBuffers.end()) {
+        return false;
+    }
+
+    bool result = std::dynamic_pointer_cast<ConstantBuffer<T>>(vsConstantBuffers[slot])->setData(deviceContext, data);
+    if (!result) {
+        return false;
+    }
+
+    return true;
+}
+
+template<class T>
+inline bool Shader::setPsConstantBufferData(Microsoft::WRL::ComPtr<ID3D11DeviceContext> deviceContext, UINT slot, T data) {
+    if (psConstantBuffers.find(slot) == psConstantBuffers.end()) {
+        return false;
+    }
+
+    bool result = std::dynamic_pointer_cast<ConstantBuffer<T>>(psConstantBuffers[slot])->setData(deviceContext, data);
+    if (!result) {
+        return false;
+    }
+
+    return true;
+}
