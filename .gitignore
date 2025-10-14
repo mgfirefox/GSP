@@ -89,7 +89,7 @@ http-client.private.env.json
 *.slo
 *.lo
 *.o
-*.obj
+GSP/**/*.obj
 
 # Precompiled Headers
 *.gch
@@ -200,7 +200,7 @@ StyleCopReport.xml
 *_h.h
 *.ilk
 *.meta
-*.obj
+GSP/**/*.obj
 *.iobj
 *.pch
 *.pdb
