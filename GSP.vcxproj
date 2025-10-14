@@ -109,82 +109,6 @@
           <SDLCheck>true</SDLCheck>
           <LinkCompiled>true</LinkCompiled>
         </ClCompile>
-        <ClCompile Include="Xaudio2SoundTransformationModel.cpp">
-          <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
-          <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
-          <Optimization>Disabled</Optimization>
-          <SupportJustMyCode>true</SupportJustMyCode>
-          <AssemblerOutput>NoListing</AssemblerOutput>
-          <AssemblerListingLocation>GSP\x64\Debug\</AssemblerListingLocation>
-          <UndefineAllPreprocessorDefinitions>false</UndefineAllPreprocessorDefinitions>
-          <BrowseInformation>false</BrowseInformation>
-          <BrowseInformationFile>GSP\x64\Debug\</BrowseInformationFile>
-          <CompileAs>Default</CompileAs>
-          <UseDynamicDebugging>false</UseDynamicDebugging>
-          <ConformanceMode>true</ConformanceMode>
-          <DiagnosticsFormat>Column</DiagnosticsFormat>
-          <DisableLanguageExtensions>false</DisableLanguageExtensions>
-          <ErrorReporting>Prompt</ErrorReporting>
-          <ExpandAttributedSource>false</ExpandAttributedSource>
-          <ExceptionHandling>Sync</ExceptionHandling>
-          <EnableASAN>false</EnableASAN>
-          <EnableFuzzer>false</EnableFuzzer>
-          <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-          <EnableEnhancedInstructionSet>NotSet</EnableEnhancedInstructionSet>
-          <EnableVectorLength>NotSet</EnableVectorLength>
-          <FloatingPointModel>Precise</FloatingPointModel>
-          <ForceConformanceInForLoopScope>true</ForceConformanceInForLoopScope>
-          <GenerateModuleDependencies>false</GenerateModuleDependencies>
-          <GenerateSourceDependencies>false</GenerateSourceDependencies>
-          <GenerateXMLDocumentationFiles>false</GenerateXMLDocumentationFiles>
-          <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-          <IntrinsicFunctions>false</IntrinsicFunctions>
-          <IgnoreStandardIncludePath>false</IgnoreStandardIncludePath>
-          <LanguageStandard>Default</LanguageStandard>
-          <LanguageStandard_C>Default</LanguageStandard_C>
-          <MinimalRebuild>false</MinimalRebuild>
-          <ModuleDependenciesFile>GSP\x64\Debug\</ModuleDependenciesFile>
-          <ModuleOutputFile>GSP\x64\Debug\</ModuleOutputFile>
-          <OmitDefaultLibName>false</OmitDefaultLibName>
-          <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-          <WholeProgramOptimization>false</WholeProgramOptimization>
-          <ObjectFileName>GSP\x64\Debug\</ObjectFileName>
-          <CallingConvention>Cdecl</CallingConvention>
-          <ProgramDataBaseFileName>GSP\x64\Debug\vc143.pdb</ProgramDataBaseFileName>
-          <PrecompiledHeader>NotUsing</PrecompiledHeader>
-          <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-          <PrecompiledHeaderOutputFile>GSP\x64\Debug\GSP.pch</PrecompiledHeaderOutputFile>
-          <PreprocessToFile>false</PreprocessToFile>
-          <PreprocessKeepComments>false</PreprocessKeepComments>
-          <PreprocessSuppressLineNumbers>false</PreprocessSuppressLineNumbers>
-          <RemoveUnreferencedCodeData>true</RemoveUnreferencedCodeData>
-          <ScanSourceForModuleDependencies>false</ScanSourceForModuleDependencies>
-          <ShowIncludes>false</ShowIncludes>
-          <SourceDependenciesFile>GSP\x64\Debug\</SourceDependenciesFile>
-          <SuppressStartupBanner>true</SuppressStartupBanner>
-          <BufferSecurityCheck>true</BufferSecurityCheck>
-          <SmallerTypeCheck>false</SmallerTypeCheck>
-          <SpectreMitigation>false</SpectreMitigation>
-          <StructMemberAlignment>Default</StructMemberAlignment>
-          <TrackerLogDirectory>GSP\x64\Debug\GSP.tlog\</TrackerLogDirectory>
-          <TranslateIncludes>false</TranslateIncludes>
-          <MinimalRebuildFromTracking>true</MinimalRebuildFromTracking>
-          <TreatWarningAsError>false</TreatWarningAsError>
-          <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
-          <UseFullPaths>true</UseFullPaths>
-          <WarningLevel>Level3</WarningLevel>
-          <XMLDocumentationFileName>GSP\x64\Debug\</XMLDocumentationFileName>
-          <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-          <IntelJCCErratum>false</IntelJCCErratum>
-          <BuildStlModules>false</BuildStlModules>
-          <TreatAngleIncludeAsExternal>false</TreatAngleIncludeAsExternal>
-          <ExternalWarningLevel>InheritWarningLevel</ExternalWarningLevel>
-          <TreatExternalTemplatesAsInternal>true</TreatExternalTemplatesAsInternal>
-          <DisableAnalyzeExternal>false</DisableAnalyzeExternal>
-          <PreprocessorDefinitions>_DEBUG;_CONSOLE;_UNICODE;UNICODE;</PreprocessorDefinitions>
-          <SDLCheck>true</SDLCheck>
-          <LinkCompiled>true</LinkCompiled>
-        </ClCompile>
         <None Include="MaterialShader.hlsl"/>
         <ClCompile Include="Mesh.cpp"/>
         <ClCompile Include="Model.cpp"/>
@@ -194,11 +118,9 @@
         <ClCompile Include="Scene.cpp"/>
         <ClCompile Include="SceneFileParser.cpp"/>
         <ClCompile Include="Shader.cpp"/>
-        <None Include="Shader.hlsl"/>
         <ClCompile Include="Sound.cpp"/>
         <ClCompile Include="Sound3d.cpp"/>
         <ClCompile Include="SoundFileParser.cpp"/>
-        <ClCompile Include="SoundTransformationModel.cpp"/>
         <ClCompile Include="Sprite.cpp"/>
         <ClCompile Include="Texture.cpp">
             <RuntimeLibrary>MultiThreadedDebugDll</RuntimeLibrary>
@@ -319,8 +241,6 @@
         <ClInclude Include="Sound3d.h"/>
         <ClInclude Include="SoundFileParser.h"/>
         <ClInclude Include="SoundFileParserUtility.h"/>
-        <ClInclude Include="SoundTransformationModel.h"/>
-        <ClInclude Include="SoundTransformationModelUtility.h"/>
         <ClInclude Include="SoundUtility.h"/>
         <ClInclude Include="Sprite.h"/>
         <ClInclude Include="Texture.h"/>
@@ -332,19 +252,12 @@
         <ClInclude Include="Window.h"/>
         <ClInclude Include="Xaudio2.h" />
         <ClInclude Include="Xaudio2Sound.h" />
-        <ClInclude Include="Xaudio2SoundTransformationModel.h" />
         <ClInclude Include="Xaudio2Utility.h" />
     </ItemGroup>
     <ItemGroup>
-        <Content Include="ad_image.dds"/>
-        <Content Include="Chest001.mtl"/>
-        <Content Include="Chest001.obj"/>
-        <Content Include="Chest002.mtl"/>
-        <Content Include="Chest002.obj"/>
-        <Content Include="Cube001.mtl"/>
-        <Content Include="Cube001.obj"/>
-        <Content Include="Cube002.mtl"/>
-        <Content Include="Cube002.obj"/>
+        <Content Include="AdImage.dds" />
+        <Content Include="Chest001.mtl" />
+        <Content Include="Chest001.obj" />
         <Content Include="gitattributes" />
         <Content Include="Map__1_Composite.dds"/>
         <Content Include="Scene001.scene"/>
