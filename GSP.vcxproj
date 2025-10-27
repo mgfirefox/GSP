@@ -258,7 +258,6 @@
         <Content Include="AdImage.dds" />
         <Content Include="Chest001.mtl" />
         <Content Include="Chest001.obj" />
-        <Content Include="gitattributes" />
         <Content Include="Map__1_Composite.dds"/>
         <Content Include="Scene001.scene"/>
         <Content Include="wood_planks_diff_4k.dds"/>
